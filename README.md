@@ -1,6 +1,6 @@
 # Dyflexis Rooster Fetch v1.0.0
 
-Fetch je werkrooster van Planning.nu en geef het terug als JSON API.
+Fetch je werkrooster van Dyflexis en geef het terug als JSON.
 
 ## Wat doet dit?
 - Logt in via PHPSESSID
