@@ -8,6 +8,10 @@ Fetch je werkrooster van Planning.nu en geef het terug als JSON API.
 - Parseert werkdagen
 - Geeft shifts terug
 
+Hierdoor kan je met dyflexis bijvoorbeeld automatisch al je werk afspraken in je agenda zetten. 
+
+Er komt nog een voorbeeld shortcut voor Apple.
+
 ## Installatie
 ```bash
 npm install
