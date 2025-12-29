@@ -1,4 +1,4 @@
-# Dyflexis Rooster Fetch Release 1.0
+# Dyflexis Rooster Fetch v1.0.0
 
 Fetch je werkrooster van Planning.nu en geef het terug als JSON API.
 
