@@ -33,3 +33,13 @@ Geeft alle dagen van de huidige maand terug, plus de overlappende dagen van de e
 
 ### /shifts
 Geeft alleen de dagen terug waar `"hasassignment": true` is.
+
+
+## Wat als de SESSID is verlopen?
+
+### Endpoints
+Als er geen data wordt teruggegeven, zullen beide endpoints het volgende terugsturen:
+{"error":"SESSID VERLOPEN"}
+
+Er wordt nog een oplossing bedacht, omdat de SESSID een van de snelst verlopen, maar ook de enige zichtbare identifier is in de requests van app.planning.nu.
+
