@@ -1,102 +1,102 @@
-# Dyflexis Rooster Fetch v1.0.2
+# Dyflexis Rooster Fetch v1.1.0
 
-Fetch je werkrooster van Dyflexis en geef het terug als JSON.
+Dit project stelt je in staat om je rooster op te halen van Dyflexis (app.planning.nu) via een eenvoudige API.
 
 ## Wat doet dit?
 
-* Logt in via PHPSESSID
-* Haalt je rooster op
-* Parseert werkdagen
-* Geeft shifts terug
-
-Hierdoor kan je met Dyflexis bijvoorbeeld automatisch al je werkafspraken in je agenda zetten.
-
-Er komt nog een voorbeeld Shortcut voor Apple.
+*   **Inloggen:** Logt in via een `PHPSESSID`.
+*   **Ophalen:** Haalt je rooster op van `app.planning.nu`.
+*   **Parseren:** Verwerkt werkdagen en assignments.
+*   **Exporteren:** Geeft shifts terug in meerdere formaten, inclusief een platte string die geoptimaliseerd is voor Apple Shortcuts.
 
 ## Installatie
 
-npm install
+1.  Installeer de afhankelijkheden:
+    ```bash
+    npm install
+    ```
+2.  Configureer de omgevingsvariabelen:
+    Vul `.env_example` in en hernoem het bestand naar `.env`.
+3.  Start de server:
+    ```bash
+    node server.js
+    ```
 
-Maak een `.env` met de ingevulde inhoud van `.env_example`.
-(Als je dit host op bijvoorbeeld Render, zorg ervoor dat je deze online invoert en niet `.env` mee commit!)
+## Gebruik
 
 ### Starten
-
+```bash
 node server.js
+```
 
-## Endpoints
+### Belangrijke Endpoints
 
-### `/rooster`
+#### `/rooster`
+Geeft alle dagen van de huidige maand terug, inclusief overlappende dagen van aangrenzende maanden. Ondersteunt query parameters voor filtering en verschillende responsformaten.
 
-Geeft alle dagen van de huidige maand terug, plus de overlappende dagen van de eerste of laatste week van aangrenzende maanden.
-Query parameters (zie onder) kunnen het resultaat filteren of van formaat laten wisselen.
+#### `/shifts`
+Geeft alleen de dagen terug waar `hasassignment: true` is. Zonder query parameters geeft dit endpoint alle beschikbare shifts terug.
 
-### `/shifts`
+### Query Parameters
+Deze parameters werken op zowel `/rooster` als `/shifts`:
 
-Geeft alleen de dagen terug waar "hasassignment": true.
-Let op: als je `/shifts` zonder query-parameters aanroept, geeft het endpoint alle shifts terug (alle dagen met een assignment).
+| Parameter | Opties | Beschrijving |
+| :--- | :--- | :--- |
+| `format` | `object` (default), `array`, `string` | Het formaat van de response (`string` werkt alleen op `/shifts`). |
+| `only` | `today`, `assigned`, `shifts` | Filtert de resultaten op specifieke types. |
+| `days` | Getal (bijv. `7`) | Aantal komende dagen vanaf vandaag. |
+| `from` | `YYYY-MM-DD` | Startdatum voor filtering. |
+| `to` | `YYYY-MM-DD` | Einddatum voor filtering. |
 
-## Query parameters
+**Voorbeeld:** `?from=2025-12-30&days=7` haalt 7 dagen op vanaf de opgegeven datum.
 
-Alle parameters werken zowel op `/rooster` als `/shifts` (waar relevant).
-Datumformaten zijn YYYY-MM-DD. De server gebruikt Europe/Amsterdam voor datumvergelijkingen.
-Als je geen format query gebruikt wordt alles by default teruggeven als een groot object met daarin objecten.
+---
 
-### `format`
+## Nieuw: String-formaat (v1.1.0)
 
+Wanneer je `?format=string` gebruikt op `/shifts`, ontvang je een platte tekststring. Dit is ideaal voor automatiseringstools zoals Apple Shortcuts.
 
-**object**:
-{
-"2025-12-31": { "date": "2025-12-31", "...": "..." },
-"2026-01-02": { "date": "2026-01-02", "...": "..." }
-}
+### Regels voor het string-formaat:
+*   **Datum en tijd:** Gescheiden door een komma (`,`).
+*   **Dagen:** Gescheiden door een pipe (`|`).
+*   **Meerdere assignments:** Tijden volgen na de datum, elk gescheiden door een komma.
+*   **Opschoning:** Tijden worden ontdaan van spaties en speciale tekens.
+*   **Geen tijd:** Als een assignment geen tijd heeft, verschijnt alleen de datum.
+*   **Formaat:** Datum is `YYYY-MM-DD`, tijd is zoals op de site (bijv. `08:30-12:45`).
 
-**array**:
-[
-{ "date": "2025-12-31", "...": "..." },
-{ "date": "2026-01-02", "...": "..." }
-]
+### Voorbeelden:
+*   **Eén dag, één shift:** `2025-12-31,08:30-12:45`
+*   **Meerdere dagen:** `2025-12-31,08:30-12:45|2026-01-02,16:00-20:00`
+*   **Dag met meerdere assignments:** `2026-01-03,08:00-12:00,13:00-17:00`
 
-### `only`
+---
 
-Voorfilters:
+## Gebruik in Apple Shortcuts
 
-* today → alleen vandaag
-* assigned of shifts → alleen dagen met hasassignment: true
+1.  Maak een **URL-actie** naar je server: `https://jouwhost.nl/shifts?format=string`
+2.  Haal de tekst op en splits deze op de pipe (`|`) om de individuele dagen te krijgen.
+3.  Splits elke dag op de komma (`,`); het eerste element is de datum, de rest zijn de tijdsblokken.
 
-### `days`
+> Er wordt binnenkort een voorbeeldshortcut toegevoegd aan dit project.
 
-Aantal komende dagen (inclusief vandaag).
-Voorbeeld:
-?days=7
+---
 
-### `from` en `to`
+## Voorbeelden van Requests
 
-Filter tussen twee datums (inclusief).
-?from=2025-12-30&to=2026-01-05
+*   **Alle shifts (object):** `/shifts`
+*   **Alle shifts (array):** `/shifts?format=array`
+*   **Alle shifts (string):** `/shifts?format=string`
+*   **Komende 7 dagen (array):** `/shifts?days=7&format=array`
+*   **Alleen vandaag:** `/shifts?only=today`
 
-### `from + days`
+## Foutafhandeling
 
-Geeft je het aantal gespecificeerde dagen vanaf een specifieke datum.
-?from=2025-12-30&days=7
+Als de sessie is verlopen of er geen data kan worden opgehaald, retourneert de API:
+```json
+{"error": "SESSID VERLOPEN"}
+```
 
-## Voorbeelden
+## Technische Details
 
-Alle shifts:
-/shifts
-
-Komende 7 dagen als array:
-/shifts?days=7&format=array
-
-Alleen shifts van vandaag:
-/shifts?only=today
-
-Rooster tussen twee datums:
-/rooster?from=2025-12-30&to=2026-01-05
-
-## Wat als de SESSID is verlopen?
-
-Als er geen data wordt teruggegeven, zullen beide endpoints het volgende terugsturen:
-{"error":"SESSID VERLOPEN"}
-
-Er wordt nog een oplossing bedacht, omdat de SESSID een van de snelst verlopen, maar ook de enige zichtbare identifier is in de requests van app.planning.nu.
+*   **Timezone:** De server gebruikt `Europe/Amsterdam` voor alle datumvergelijkingen.
+*   **Sessie:** Zorg ervoor dat je `PHPSESSID` en `HEADERPATH` in je `.env` bestand up-to-date zijn.

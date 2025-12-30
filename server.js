@@ -74,6 +74,21 @@ app.get('/shifts', async (req, res) => {
     const format = (req.query.format || 'object').toLowerCase()
 
     if (format === 'array') return res.json(filtered)
+
+    if (format === 'string') {
+      const daysStrings = filtered.map(d => {
+        const times = (d.assignments || []).map(a => {
+          const raw = (a.time || '').toString()
+          const cleaned = raw.replace(/\s+/g, '').replace(/[,\|]/g, '-')
+          return cleaned
+        }).filter(Boolean)
+        if (times.length === 0) return d.date
+        return [d.date, ...times].join(',')
+      })
+      const out = daysStrings.join('|')
+      return res.type('text/plain').send(out)
+    }
+
     res.json(arrayToObject(filtered))
   } catch (e) {
     res.status(500).json({ error: e.message })
