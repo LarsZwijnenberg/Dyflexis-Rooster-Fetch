@@ -1,157 +1,89 @@
-require('dotenv').config();
-const http2 = require('http2');
-const zlib = require('zlib');
-const cheerio = require('cheerio');
+require('dotenv').config()
+const http2 = require('http2')
+const zlib = require('zlib')
+const cheerio = require('cheerio')
 
 async function getRoster() {
-  if (!process.env.PHPSESSID) {
-    throw new Error('Missing environment variable PHPSESSID');
-  }
+  if (!process.env.PHPSESSID) throw new Error('Missing PHPSESSID')
+  if (!process.env.HEADERPATH) throw new Error('Missing HEADERPATH')
 
-  const origin = 'https://app.planning.nu';
-  const client = http2.connect(origin);
+  const client = http2.connect('https://app.planning.nu')
 
   return new Promise((resolve, reject) => {
-    client.on('error', err => reject(err));
-
-    const headers = {
+    const req = client.request({
       ':method': 'GET',
       ':path': process.env.HEADERPATH,
       ':scheme': 'https',
       ':authority': 'app.planning.nu',
-      'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-      'accept-encoding': 'gzip, deflate, br, zstd',
-      'accept-language': 'en-AU,en;q=0.9,nl-NL;q=0.8,nl;q=0.7,en-GB;q=0.6,en-US;q=0.5',
-      'cache-control': 'no-cache',
-      'pragma': 'no-cache',
       'cookie': `PHPSESSID=${process.env.PHPSESSID}`,
-      'upgrade-insecure-requests': '1',
-      'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36'
-    };
+      'accept': 'text/html',
+      'accept-encoding': 'gzip, deflate, br'
+    })
 
-    const req = client.request(headers);
-    const chunks = [];
-    let responseHeaders = {};
+    const chunks = []
+    let headers = {}
 
-    req.on('response', (h) => {
-      responseHeaders = h;
-    });
+    req.on('response', h => headers = h)
+    req.on('data', d => chunks.push(d))
+    req.on('end', async () => {
+      try {
+        const raw = Buffer.concat(chunks)
+        const enc = (headers['content-encoding'] || '').toString()
+        let buf = raw
 
-    req.on('data', (chunk) => chunks.push(chunk));
+        if (enc.includes('br')) buf = await new Promise((r, j) => zlib.brotliDecompress(raw, (e, d) => e ? j(e) : r(d)))
+        if (enc.includes('gzip')) buf = await new Promise((r, j) => zlib.gunzip(raw, (e, d) => e ? j(e) : r(d)))
+        if (enc.includes('deflate')) buf = await new Promise((r, j) => zlib.inflate(raw, (e, d) => e ? j(e) : r(d)))
 
-    req.on('end', () => {
-      (async () => {
-        try {
-          const raw = Buffer.concat(chunks);
-          const encoding = (responseHeaders['content-encoding'] || '').toString().toLowerCase();
+        const $ = cheerio.load(buf.toString())
+        const days = []
 
-          if (encoding.includes('zstd')) {
-            throw new Error('Server responded with zstd encoding which is not supported by this script.');
-          }
+        const weekday = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za']
+        const weekdayFull = { ma: 'maandag', di: 'dinsdag', wo: 'woensdag', do: 'donderdag', vr: 'vrijdag', za: 'zaterdag', zo: 'zondag' }
 
-          let htmlBuffer;
-          if (encoding.includes('br')) {
-            htmlBuffer = await new Promise((res, rej) => zlib.brotliDecompress(raw, (e, d) => e ? rej(e) : res(d)));
-          } else if (encoding.includes('gzip')) {
-            htmlBuffer = await new Promise((res, rej) => zlib.gunzip(raw, (e, d) => e ? rej(e) : res(d)));
-          } else if (encoding.includes('deflate')) {
-            htmlBuffer = await new Promise((res, rej) => zlib.inflate(raw, (e, d) => e ? rej(e) : res(d)));
-          } else {
-            htmlBuffer = raw;
-          }
+        $('td[title]').each((i, el) => {
+          const date = $(el).attr('title')
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return
 
-          const html = htmlBuffer.toString('utf8');
-          const $ = cheerio.load(html);
+          const d = new Date(date)
+          const wd = weekday[d.getDay()]
+          const ass = []
 
-          function parseYMD(s) {
-            const [y, m, d] = s.split('-').map(Number);
-            return new Date(y, m - 1, d);
-          }
+          $(el).find('.ass').each((j, a) => {
+            const t = $(a)
+            let place = t.find('div[title]').attr('title') || t.find('div[title]').text()
+            place = place ? place.replace(/\s*>\s*/g, ', ').trim() : null
+            const time = t.find('b').first().text().trim() || null
+            const txt = t.text()
+            const pm = txt.match(/\(([^)]*pauze[^)]*)\)/i) || txt.match(/\((\d+\s*min[^)]*)\)/i)
+            const pause = pm ? pm[1].trim() : null
+            ass.push({ place, time, pause })
+          })
 
-          function weekdayName(idx) {
-            const short = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
-            return short[idx];
-          }
+          days.push({
+            date,
+            weekday: wd,
+            weekday_full: weekdayFull[wd],
+            assignments: ass,
+            hasassignment: ass.length > 0
+          })
+        })
 
-          function weekdayFull(short) {
-            return {
-              ma: 'maandag',
-              di: 'dinsdag',
-              wo: 'woensdag',
-              do: 'donderdag',
-              vr: 'vrijdag',
-              za: 'zaterdag',
-              zo: 'zondag'
-            }[short];
-          }
+        resolve(days)
+      } catch (e) {
+        reject(e)
+      } finally {
+        client.close()
+      }
+    })
 
-          const workdays = [];
+    req.on('error', e => {
+      client.close()
+      reject(e)
+    })
 
-          $('td[title]').each((i, el) => {
-            const $el = $(el);
-            const dateStr = $el.attr('title')?.trim();
-            if (!dateStr) return;
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return;
-            const dateObj = parseYMD(dateStr);
-            const dayIndex = dateObj.getDay();
-            if (dayIndex < 1 || dayIndex > 5) return;
-            const assignments = [];
-            $el.find('.ass').each((j, a) => {
-              const $a = $(a);
-              const titleDiv = $a.find('div[title]').first();
-              let place = titleDiv.text().trim() || titleDiv.attr('title') || null;
-              if (place) {
-              place = place
-                .replace(/\s*>\s*/g, ', ')
-                .replace(/\u003E/g, ', ')
-                .replace(/\s+/g, ' ')
-                .trim();
-              }
-              const timeText = $a.find('b').first().text().trim() || null;
-              const rawText = $a.text();
-              const pauzeMatch = rawText.match(/\(([^)]+pauze[^)]*)\)/i) || rawText.match(/\((\d+\s*min[^\)]*)\)/i);
-              const pause = pauzeMatch ? pauzeMatch[1].trim() : null;
-              assignments.push({
-                place,
-                time: timeText,
-                pause
-              });
-            });
-            const wd = weekdayName(dayIndex);
-            workdays.push({
-              date: dateStr,
-              weekday: wd,
-              weekday_full: weekdayFull(wd),
-              assignments,
-              hasassignment: assignments.length > 0
-            });
-          });
-
-          resolve(workdays);
-        } catch (err) {
-          reject(err);
-        } finally {
-          try { client.close(); } catch (e) {}
-        }
-      })();
-    });
-
-    req.on('error', (err) => {
-      try { client.close(); } catch (e) {}
-      reject(err);
-    });
-
-    req.end();
-  });
+    req.end()
+  })
 }
 
-module.exports = { getRoster };
-
-if (require.main === module) {
-  getRoster().then(data => {
-    console.log(JSON.stringify(data, null, 2));
-  }).catch(err => {
-    console.error(err);
-    process.exit(1);
-  });
-}
+module.exports = { getRoster }
