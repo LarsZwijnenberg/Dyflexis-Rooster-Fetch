@@ -1,4 +1,4 @@
-# Dyflexis Rooster Fetch v1.1.0
+# Dyflexis Rooster Fetch v1.2.0
 
 Dit project stelt je in staat om je rooster op te halen van Dyflexis (app.planning.nu) via een eenvoudige API.
 
@@ -54,7 +54,7 @@ Deze parameters werken op zowel `/rooster` als `/shifts`:
 
 ## Nieuw: String-formaat (v1.1.0)
 
-Wanneer je `?format=string` gebruikt op `/shifts`, ontvang je een platte tekststring. Dit is ideaal voor automatiseringstools zoals Apple Shortcuts.
+Wanneer je `?format=string` gebruikt op `/shifts` of `/rooster`, ontvang je een platte tekststring. Dit is ideaal voor automatiseringstools zoals Apple Shortcuts.
 
 ### Regels voor het string-formaat:
 *   **Datum en tijd:** Gescheiden door een komma (`,`).

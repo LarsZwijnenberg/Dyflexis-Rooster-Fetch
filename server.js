@@ -45,55 +45,51 @@ function applyQueryFilters(data = [], query = {}) {
   return out
 }
 
-app.get('/rooster', async (req, res) => {
+function formatDaysToString(days = []) {
+  const dayStrings = days.map(d => {
+    const times = (d.assignments || [])
+      .map(a => (a.time || '').toString()
+        .replace(/\s+/g, '')
+        .replace(/[,\|]/g, '-')
+      )
+      .filter(Boolean)
+
+    if (times.length === 0) return d.date
+    return [d.date, ...times].join(',')
+  })
+
+  return dayStrings.join('|')
+}
+
+async function handleRosterRequest(req, res, { onlyAssigned = false } = {}) {
   try {
     const data = await getRoster()
     if (Array.isArray(data) && data.length === 0) {
       return res.status(401).json({ error: 'SESSID VERLOPEN' })
     }
 
-    const filtered = applyQueryFilters(data, req.query)
+    const base = onlyAssigned ? data.filter(d => d.hasassignment) : data
+    const filtered = applyQueryFilters(base, req.query)
     const format = (req.query.format || 'object').toLowerCase()
 
     if (format === 'array') return res.json(filtered)
-    res.json(arrayToObject(filtered))
-  } catch (e) {
-    res.status(500).json({ error: e.message })
-  }
-})
-
-app.get('/shifts', async (req, res) => {
-  try {
-    const data = await getRoster()
-    if (Array.isArray(data) && data.length === 0) {
-      return res.status(401).json({ error: 'SESSID VERLOPEN' })
-    }
-
-    const assigned = data.filter(d => d.hasassignment)
-    const filtered = applyQueryFilters(assigned, req.query)
-    const format = (req.query.format || 'object').toLowerCase()
-
-    if (format === 'array') return res.json(filtered)
-
     if (format === 'string') {
-      const daysStrings = filtered.map(d => {
-        const times = (d.assignments || []).map(a => {
-          const raw = (a.time || '').toString()
-          const cleaned = raw.replace(/\s+/g, '').replace(/[,\|]/g, '-')
-          return cleaned
-        }).filter(Boolean)
-        if (times.length === 0) return d.date
-        return [d.date, ...times].join(',')
-      })
-      const out = daysStrings.join('|')
-      return res.type('text/plain').send(out)
+      return res.type('text/plain').send(formatDaysToString(filtered))
     }
 
     res.json(arrayToObject(filtered))
   } catch (e) {
     res.status(500).json({ error: e.message })
   }
-})
+}
+
+app.get('/rooster', (req, res) =>
+  handleRosterRequest(req, res)
+)
+
+app.get('/shifts', (req, res) =>
+  handleRosterRequest(req, res, { onlyAssigned: true })
+)
 
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => console.log(`API running on PORT ${PORT}`))
