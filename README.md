@@ -45,7 +45,7 @@ Deze parameters werken op zowel `/rooster` als `/shifts`:
 
 | Parameter | Opties | Beschrijving |
 | :--- | :--- | :--- |
-| `format` | `object` (default), `array`, `string` |
+| `format` | `object` (default), `array`, `string` | Hiermee bepaal je in welk formaat je de data krijgt. |
 | `only` | `today`, `assigned`, `shifts` | Filtert de resultaten op specifieke types. |
 | `days` | Getal (bijv. `7`) | Aantal komende dagen vanaf vandaag. |
 | `from` | `YYYY-MM-DD` | Startdatum voor filtering. |
