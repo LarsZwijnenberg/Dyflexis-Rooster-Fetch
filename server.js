@@ -64,10 +64,7 @@ function formatDaysToString(days = []) {
 async function handleRosterRequest(req, res, { onlyAssigned = false } = {}) {
   try {
     const data = await getRoster()
-    if (Array.isArray(data) && data.length === 0) {
-      return res.status(401).json({ error: 'SESSID VERLOPEN' })
-    }
-
+    
     const base = onlyAssigned ? data.filter(d => d.hasassignment) : data
     const filtered = applyQueryFilters(base, req.query)
     const format = (req.query.format || 'object').toLowerCase()
@@ -79,17 +76,18 @@ async function handleRosterRequest(req, res, { onlyAssigned = false } = {}) {
 
     res.json(arrayToObject(filtered))
   } catch (e) {
-    res.status(500).json({ error: e.message })
+    console.error('Error fetching roster:', e)
+    
+    if (e && e.error === 'LOGIN_FAILED') {
+      return res.status(401).json({ error: 'LOGIN_FAILED', message: e.message })
+    }
+    
+    res.status(500).json({ error: e.message || 'Unknown error' })
   }
 }
 
-app.get('/rooster', (req, res) =>
-  handleRosterRequest(req, res)
-)
-
-app.get('/shifts', (req, res) =>
-  handleRosterRequest(req, res, { onlyAssigned: true })
-)
+app.get('/rooster', (req, res) => handleRosterRequest(req, res))
+app.get('/shifts', (req, res) => handleRosterRequest(req, res, { onlyAssigned: true }))
 
 const PORT = process.env.PORT || 3000
 app.listen(PORT, () => console.log(`API running on PORT ${PORT}`))
