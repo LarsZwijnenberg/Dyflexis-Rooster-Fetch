@@ -102,7 +102,7 @@ async function loginAndGetSESSID() {
     throw new Error('Missing EMAIL or PASSWORD in .env')
   }
 
-  const loginPath = process.env.LOGINPATH')
+  const loginPath = process.env.LOGINPATH'
   console.log(`[LOGIN] Login path: ${loginPath}`)
   
   const getRes = await http2Request(loginPath, 'GET', { accept: 'text/html' })
