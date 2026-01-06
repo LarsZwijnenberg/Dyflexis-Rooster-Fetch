@@ -1,6 +1,9 @@
-# Dyflexis Rooster Fetch v1.2.0
+# Dyflexis Rooster Fetch v1.2.1
 
 Dit project stelt je in staat om je rooster op te halen van Dyflexis (app.planning.nu) via een eenvoudige API.
+
+**Apple Shortcut URL:**  
+https://www.icloud.com/shortcuts/d72d53c003e54924981c1f69653c0d1f
 
 ## Wat doet dit?
 
@@ -77,7 +80,7 @@ Wanneer je `?format=string` gebruikt op `/shifts` of `/rooster`, ontvang je een 
 2.  Haal de tekst op en splits deze op de pipe (`|`) om de individuele dagen te krijgen.
 3.  Splits elke dag op de komma (`,`); het eerste element is de datum, de rest zijn de tijdsblokken.
 
-> Er wordt binnenkort een voorbeeldshortcut toegevoegd aan dit project.
+> Apple Shortcut link direct: https://www.icloud.com/shortcuts/d72d53c003e54924981c1f69653c0d1f
 
 ---
 
