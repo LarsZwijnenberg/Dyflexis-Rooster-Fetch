@@ -1,29 +1,40 @@
-# Dyflexis Rooster Fetch v1.2.1
+# Dyflexis Rooster Fetch v1.5.0
 
-Dit project stelt je in staat om je rooster op te halen van Dyflexis (app.planning.nu) via een eenvoudige API.
+Dit project stelt je in staat om je rooster op te halen van Dyflexis (app.planning.nu) via een eenvoudige API met automatische login.
 
 **Apple Shortcut URL:**  
 https://www.icloud.com/shortcuts/d72d53c003e54924981c1f69653c0d1f
 
+## Wat is er nieuw in v1.5.0?
+
+*   **Automatische login:** Geen handmatige PHPSESSID meer nodig! De API logt automatisch in met je credentials.
+*   **CSRF token detectie:** Automatische extractie van authentication tokens.
+*   **Uitgebreide logging:** Zie precies wat er gebeurt tijdens het login- en ophaalproces.
+
 ## Wat doet dit?
 
-*   **Inloggen:** Logt in via een `PHPSESSID`.
-*   **Ophalen:** Haalt je rooster op van `app.planning.nu`.
+*   **Automatisch inloggen:** Logt in met je email en wachtwoord.
+*   **Sessie beheer:** Haalt automatisch de PHPSESSID op na login.
+*   **Ophalen:** Haalt je rooster op van Dyflexis (`app.planning.nu`).
 *   **Parseren:** Verwerkt werkdagen en assignments.
 *   **Exporteren:** Geeft shifts terug in meerdere formaten, inclusief een platte string die geoptimaliseerd is voor Apple Shortcuts.
 
 ## Installatie
 
 1.  Installeer de afhankelijkheden:
-    ```bash
+```bash
     npm install
-    ```
+```
 2.  Configureer de omgevingsvariabelen:
-    Vul `.env_example` in en hernoem het bestand naar `.env`.
+    Vul `.env_example` in en hernoem het bestand naar `.env`:
+    **Let op:** 
+    - Vervang `systeemnaam` door je Dyflexis systeemnaam
+    - Vervang `locatie` door je locatienaam
+    
 3.  Start de server:
-    ```bash
+```bash
     node server.js
-    ```
+```
 
 ## Gebruik
 
@@ -31,6 +42,8 @@ https://www.icloud.com/shortcuts/d72d53c003e54924981c1f69653c0d1f
 ```bash
 node server.js
 ```
+
+De API logt automatisch in bij elke request en haalt de benodigde sessie op.
 
 ### Belangrijke Endpoints
 
@@ -55,7 +68,7 @@ Deze parameters werken op zowel `/rooster` als `/shifts`:
 
 ---
 
-## Nieuw: String-formaat (v1.1.0)
+## String-formaat
 
 Wanneer je `?format=string` gebruikt op `/shifts` of `/rooster`, ontvang je een platte tekststring. Dit is ideaal voor automatiseringstools zoals Apple Shortcuts.
 
@@ -94,12 +107,23 @@ Wanneer je `?format=string` gebruikt op `/shifts` of `/rooster`, ontvang je een 
 
 ## Foutafhandeling
 
-Als de sessie is verlopen of er geen data kan worden opgehaald, retourneert de API:
+Mogelijke errors die de API kan teruggeven:
+
+*   **Login mislukt:**
 ```json
-{"error": "SESSID VERLOPEN"}
+    {"error": "LOGIN_FAILED", "message": "Login page returned. Check credentials or 2FA."}
+```
+*   **Geen data:**
+```json
+    {"error": "NO_DATA", "message": "No days parsed from page"}
+```
+*   **Configuratie fout:**
+```json
+    {"error": "Missing EMAIL or PASSWORD in .env"}
 ```
 
 ## Technische Details
 
 *   **Timezone:** De server gebruikt `Europe/Amsterdam` voor alle datumvergelijkingen.
-*   **Sessie:** Zorg ervoor dat je `PHPSESSID` en `HEADERPATH` in je `.env` bestand up-to-date zijn.
+*   **Automatische sessie:** De PHPSESSID wordt automatisch opgehaald en gebruikt per request.
+*   **CSRF bescherming:** De API haalt automatisch het authentication-csrf-token op en stuurt dit mee.
